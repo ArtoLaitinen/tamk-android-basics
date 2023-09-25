@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Harkka2</string>
+    <string name="click_me">Klikkaa</string>
+    <string name="button_clicked">Klikattu</string>
+    <string name="hello_world">Tere</string>
+    <string name="hello_from_code">Tere koodista</string>
+</resources>
