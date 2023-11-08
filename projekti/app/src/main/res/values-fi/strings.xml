@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Weather App</string>
+    <string name="wind">Tuuli</string>
+    <string name="humidity">Kosteus</string>
+    <string name="looking_for_gps">Etsitään Sijaintia...</string>
+</resources>
