@@ -4,4 +4,10 @@
     <string name="wind">Tuuli</string>
     <string name="humidity">Kosteus</string>
     <string name="looking_for_gps">Etsitään Sijaintia...</string>
+    <string name="location_required">Sijainti Vaaditaan</string>
+    <string name="fetch_failed">Säätietojenhaku epäonnistui</string>
+    <string name="settings">Asetukset</string>
+    <string name="units">Mittayksikkö:</string>
+    <string name="imperial">Amerikka</string>
+    <string name="metric">Eurooppa</string>
 </resources>

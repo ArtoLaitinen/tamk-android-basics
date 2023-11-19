@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -24,20 +26,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 
-/*
-kysy:
-    gps permission kysyminen (ei tarvitsisi käynnistää uudestaan)
-    error handling (getWeatherData)
-    näytön kääntö (kutsutaanko api uudestaan?, miksi ei näy kunnolla)
-    mitä toiseen ruutuun?
-    lisätäänkö mahdollisuus omaan hakuun?
- */
 public class MainActivity extends AppCompatActivity {
 
     private LocationManager locationManager;
     private double latitude;
     private double longitude;
     private static final String API_KEY = "dba60f59482d08e0f171893a7c1214b6";
+    private boolean isMetric;
 
 
     @Override
@@ -48,16 +43,40 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startGPS() {
+
         //Chekataan, onko oikeudet paikkatietoon, jos ei ole, pyydetään oikeudet dialogilla
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             //meillä ei oikeuksia -> pyydetään ne
             requestPermissions(new String[] {android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 0);
             return;
         }
+        //haetaan gps
+        getGPS();
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case 0:
+                // Katsotaan onko sijaintioikeudet annettu
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    getGPS();
+                } else {
+                    TextView statusTextView = findViewById(R.id.statusTextView);
+                    String locationRequiredString = getString(R.string.location_required);
+                    statusTextView.setText(locationRequiredString);
+                }
+                return;
+        }
+    }
+
+    public void getGPS(){
         locationManager = (LocationManager)getSystemService(Context.LOCATION_SERVICE);
         Location currentLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
-        //Jos on oikeudet, luetaan gps ja/tai rekisteöidytään kuuntelemaan LAT LNG -parametreja
+        // luetaan gps ja/tai rekisteöidytään kuuntelemaan LAT LNG -parametreja
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 500, new LocationListener() {
             @Override
             public void onLocationChanged(@NonNull Location location) {
@@ -68,14 +87,23 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+
     public void getWeatherData(){
-        String WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather?lat=%.6f&lon=%.6f&appid=%s&units=metric";
-        String formattedWeatherUrl = String.format(WEATHER_URL, latitude, longitude, API_KEY);
+        //Luetaan sharedprefenseistä, mikä yksikkö on valittuna
+        SharedPreferences sharedPreferences = getSharedPreferences("WeatherPrefs", Context.MODE_PRIVATE);
+        isMetric = sharedPreferences.getBoolean("isMetric", true);
+        String unitString = isMetric ? "metric" : "imperial";
+
+        String WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather?lat=%.6f&lon=%.6f&appid=%s&units=%s";
+        String formattedWeatherUrl = String.format(WEATHER_URL, latitude, longitude, API_KEY, unitString);
 
         StringRequest request = new StringRequest(Request.Method.GET, formattedWeatherUrl, response -> {
             parseWeatherJsonAndUpdateUI(response);
         }, error -> {
-            Toast.makeText(this, "ERROR", Toast.LENGTH_LONG).show();
+            TextView statusTextView = findViewById(R.id.statusTextView);
+            String errorString = getString(R.string.fetch_failed);
+            statusTextView.setText(errorString);
         });
 
         //lähetetään request volleylla == lisätään request requestqueueen
@@ -84,9 +112,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void parseWeatherJsonAndUpdateUI(String response) {
+
         //koska tiedämme, että gps on nyt löytynyt, poistetaan lataus teksti näkyvistä
-        TextView loadingTextView = findViewById(R.id.loadingTextView);
-        loadingTextView.setVisibility(View.GONE);
+        TextView statusTextView = findViewById(R.id.statusTextView);
+        statusTextView.setVisibility(View.GONE);
 
         //parsitaan json ja päivitetään tiedot näytölle
         try {
@@ -103,12 +132,12 @@ public class MainActivity extends AppCompatActivity {
 
             double temperature = weatherJSON.getJSONObject("main").getDouble("temp");
             TextView temperatureTextView = findViewById(R.id.temperatureTextView);
-            temperatureTextView.setText(temperature + " °C" );
+            temperatureTextView.setText(temperature + (isMetric ? " °C" : " °F" ));
 
             double wind = weatherJSON.getJSONObject("wind").getDouble("speed");
             String windString = getString(R.string.wind);
             TextView windTextView = findViewById(R.id.windTextView);
-            windTextView.setText(windString + ": " + wind + " m/s");
+            windTextView.setText(windString + ": " + wind + (isMetric ? " m/s" : " mph" ));
 
             double humidity = weatherJSON.getJSONObject("main").getDouble("humidity");
             String humidityString = getString(R.string.humidity);
@@ -119,6 +148,12 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void openSettings(View view){
+        //avataan asetukset
+        Intent settingsIntent = new Intent(this, SettingsActivity.class);
+        startActivity(settingsIntent);
     }
 
 }
